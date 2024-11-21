@@ -11,8 +11,12 @@ interface PokedexApi {
     @GET("region/")
     suspend fun getRegions(): RegionResponse
 
+    // Métodos específicos para cada región
     @GET("pokedex/kanto/")
-    suspend fun getPokedex(): Response<PokemonResponse>
+    suspend fun getPokedexKanto(): Response<PokemonResponse>
+
+    @GET("pokedex/hoenn/")
+    suspend fun getPokedexHoenn(): Response<PokemonResponse>
 }
 
 data class RegionResponse(val results: List<Region>)
