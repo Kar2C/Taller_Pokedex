@@ -184,12 +184,8 @@ fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
                 // Habilidades
                 Text("Abilities: ${details.abilities.joinToString(", ") { ability -> ability.ability.name.capitalize() }}")
 
-                // Categoría
-                Text("Category: ${details.species.category.name.capitalize()}")
-
                 // Descripción (Flavor Text)
-                val description = details.species.flavor_text_entries.firstOrNull { it.language.name == "en" }?.flavor_text
-                Text("Description: ${description ?: "No description available"}")
+                Text("Description: Aca va la descripcionnn")
 
                 // Movimientos
                 Text("Moves:")
