@@ -38,18 +38,57 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun PokedexApp() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "home") {
-        composable("home") { PokedexScreen(navController) }
-        composable("region/{regionName}") { backStackEntry ->
-            val regionName = backStackEntry.arguments?.getString("regionName")
-            regionName?.let { ShowRegionPokemonScreen(regionName = it, navController = navController) }
+    var selectedTabIndex by remember { mutableStateOf(0) } // Controlador de las pestañas
+
+    Column {
+        // Barra de pestañas con los botones "Regiones", "Pokemones", "Tipos"
+        TabRow(selectedTabIndex = selectedTabIndex, modifier = Modifier.fillMaxWidth()) {
+            Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }) {
+                Text("Regiones", modifier = Modifier.padding(16.dp))
+            }
+            Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }) {
+                Text("Pokemones", modifier = Modifier.padding(16.dp))
+            }
+            Tab(selected = selectedTabIndex == 2, onClick = { selectedTabIndex = 2 }) {
+                Text("Tipos", modifier = Modifier.padding(16.dp))
+            }
         }
-        composable("pokemonDetail/{pokemonName}") { backStackEntry ->
-            val pokemonName = backStackEntry.arguments?.getString("pokemonName") ?: ""
-            PokemonDetailScreen(pokemonName = pokemonName, navController = navController)
+
+        // Definimos la navegación
+        NavHost(navController = navController, startDestination = "home") {
+            composable("home") {
+                // Cuando se selecciona "Regiones", mostramos la lista de regiones
+                if (selectedTabIndex == 0) {
+                    PokedexScreen(navController)
+                } else {
+                    ShowUnderConstruction() // En los demás casos, mostramos el mensaje de proceso
+                }
+            }
+
+            composable("region/{regionName}") { backStackEntry ->
+                val regionName = backStackEntry.arguments?.getString("regionName")
+                regionName?.let {
+                    ShowRegionPokemonScreen(regionName = it, navController = navController)
+                }
+            }
+
+            composable("pokemonDetail/{pokemonName}") { backStackEntry ->
+                val pokemonName = backStackEntry.arguments?.getString("pokemonName") ?: ""
+                PokemonDetailScreen(pokemonName = pokemonName, navController = navController)
+            }
         }
     }
+}
 
+// Pantalla para mostrar cuando "Pokemones" o "Tipos" están en proceso
+@Composable
+fun ShowUnderConstruction() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Está en proceso", fontSize = 24.sp)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -243,7 +282,10 @@ fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
                     Text("- ${move.move.name.capitalize()}")
                 }
             } ?: run {
-                Text("Loading Pokémon details...", modifier = Modifier.align(Alignment.CenterHorizontally))
+                Text(
+                    "Loading Pokémon details...",
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             }
         }
     }
