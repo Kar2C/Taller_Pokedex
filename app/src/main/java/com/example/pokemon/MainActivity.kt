@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -27,10 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
+import coil.compose.AsyncImage
 import com.example.pokemon.driverAdapters.PokemonDriverAdapter
 import com.example.pokemon.services.models.Pokemon
 import com.example.pokemon.services.models.PokemonDetail
 import com.example.pokemon.services.models.PokemonType
+import com.example.pokemon.services.models.toPokemonDetail
 import com.example.pokemon.services.roomDatabase.DatabaseClient
 import com.example.pokemon.services.roomDatabase.PokemonEntity
 import com.example.pokemon.ui.theme.PokemonTheme
@@ -52,11 +55,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun PokedexApp() {
     val navController = rememberNavController()
-    var selectedTabIndex by remember { mutableStateOf(0) } // Controlador de las pestañas
+    var selectedTabIndex by remember { mutableStateOf(0) }
     var pokemonTypes by remember { mutableStateOf<List<PokemonType>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Realizar la llamada a la API para obtener los tipos de Pokémon
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             try {
@@ -71,7 +73,6 @@ fun PokedexApp() {
     }
 
     Column {
-        // Barra de pestañas con los botones "Regiones", "Pokemones", "Tipos"
         TabRow(selectedTabIndex = selectedTabIndex, modifier = Modifier.fillMaxWidth()) {
             Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }) {
                 Text("Regiones", modifier = Modifier.padding(16.dp))
@@ -84,19 +85,17 @@ fun PokedexApp() {
             }
         }
 
-        // Definimos la navegación
         NavHost(navController = navController, startDestination = "home") {
             composable("home") {
                 if (selectedTabIndex == 0) {
-                    PokedexScreen(navController)  // Pantalla de regiones
+                    PokedexScreen(navController)
                 } else if (selectedTabIndex == 1) {
-                    PokemonListScreen(navController)  // Pantalla de Pokémon
+                    PokemonListScreen(navController)
                 } else if (selectedTabIndex == 2) {
-                    ShowPokemonTypes(pokemonTypes, navController) // Mostrar los tipos
+                    ShowPokemonTypes(pokemonTypes, navController)
                 }
             }
 
-            // Nueva ruta para la pantalla de Pokémon por tipo
             composable("pokemonByType/{typeName}") { backStackEntry ->
                 val typeName = backStackEntry.arguments?.getString("typeName") ?: ""
                 PokemonByTypeScreen(typeName = typeName, navController = navController)
@@ -108,7 +107,7 @@ fun PokedexApp() {
             }
 
             composable("favorites") {
-                FavoritesScreen(navController)  // Navegación a la pantalla de favoritos
+                FavoritesScreen(navController)
             }
 
             composable("region/{regionName}") { backStackEntry ->
@@ -138,7 +137,6 @@ fun ShowPokemonTypes(pokemonTypes: List<PokemonType>, navController: NavControll
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            // Mostrar los tipos de Pokémon
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(8.dp)
@@ -147,7 +145,6 @@ fun ShowPokemonTypes(pokemonTypes: List<PokemonType>, navController: NavControll
                     val pokemonType = pokemonTypes[index]
                     Button(
                         onClick = {
-                            // Navegar a la pantalla de Pokémon por tipo
                             navController.navigate("pokemonByType/${pokemonType.name}")
                         },
                         modifier = Modifier
@@ -167,13 +164,11 @@ fun PokemonByTypeScreen(typeName: String, navController: NavController) {
     var pokemonList by remember { mutableStateOf<List<String>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Realizar la llamada a la API para obtener los Pokémon de este tipo
     LaunchedEffect(typeName) {
         coroutineScope.launch {
             try {
                 val response = PokemonDriverAdapter.api.getPokemonByType(typeName)
                 if (response.isSuccessful) {
-                    // Extraemos los nombres de los Pokémon de la respuesta
                     pokemonList = response.body()?.pokemon?.map { it.pokemon.name } ?: emptyList()
                 }
             } catch (e: Exception) {
@@ -197,7 +192,6 @@ fun PokemonByTypeScreen(typeName: String, navController: NavController) {
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
 
-            // Mostrar los Pokémon del tipo en botones
             if (pokemonList.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -207,7 +201,6 @@ fun PokemonByTypeScreen(typeName: String, navController: NavController) {
                         val pokemonName = pokemonList[index]
                         Button(
                             onClick = {
-                                // Navegar a la pantalla de detalles del Pokémon
                                 navController.navigate("pokemonDetail/${pokemonName}")
                             },
                             modifier = Modifier
@@ -228,14 +221,12 @@ fun PokemonByTypeScreen(typeName: String, navController: NavController) {
 @Composable
 fun PokemonListScreen(navController: NavController) {
     var pokemonList by remember { mutableStateOf<List<Pokemon>>(emptyList()) }
-    var searchQuery by remember { mutableStateOf("") } // Estado para la búsqueda
+    var searchQuery by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
-    // Realizar la llamada a la API para obtener los Pokémon
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             try {
-                // Llamamos al API para obtener la lista de los 1500 Pokémon
                 val response = PokemonDriverAdapter.api.getPokemonList()
                 if (response.isSuccessful) {
                     pokemonList = response.body()?.results ?: emptyList()
@@ -246,7 +237,6 @@ fun PokemonListScreen(navController: NavController) {
         }
     }
 
-    // Filtrar los Pokémon por la primera letra del nombre
     val filteredPokemonList = pokemonList.filter { pokemon ->
         pokemon.name.startsWith(searchQuery, ignoreCase = true)
     }
@@ -262,10 +252,9 @@ fun PokemonListScreen(navController: NavController) {
                 .padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Barra de búsqueda en la parte superior
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it }, // Actualizar el estado con la búsqueda
+                onValueChange = { searchQuery = it },
                 label = { Text("Buscar Pokémon por letra") },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -273,7 +262,6 @@ fun PokemonListScreen(navController: NavController) {
                 singleLine = true
             )
 
-            // Mostrar la lista filtrada de Pokémon
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
@@ -283,7 +271,6 @@ fun PokemonListScreen(navController: NavController) {
                     val pokemon = filteredPokemonList[index]
                     Button(
                         onClick = {
-                            // Navegar a la pantalla de detalles del Pokémon
                             navController.navigate("pokemonDetail/${pokemon.name}")
                         },
                         modifier = Modifier
@@ -303,9 +290,6 @@ fun PokemonListScreen(navController: NavController) {
 fun PokedexScreen(navController: NavController) {
     Scaffold(
         topBar = { TopBar(navController) },
-        bottomBar = {
-            BottomBarLikeButton(navController = navController)
-        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -322,11 +306,8 @@ fun PokedexScreen(navController: NavController) {
                     fontSize = 28.sp
                 )
             )
-            // Definir un color rojo personalizado
-            val redColor = Color(0xFFEE1C25) // Un rojo fuerte similar al de Pokémon
-            val buttonTextStyle = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold) // Estilo de texto más grande
+            val buttonTextStyle = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-            // Fila de botones Kanto y Hoenn
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -348,13 +329,11 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/Hoenn")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor) // Establece el color de fondo aquí
                 ) {
                     Text("Hoenn", style = buttonTextStyle)
                 }
             }
 
-            // Fila de botones Galar y Paldea
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -367,7 +346,6 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/Galar")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Galar", style = buttonTextStyle)
                 }
@@ -377,13 +355,11 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/Paldea")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Paldea", style = buttonTextStyle)
                 }
             }
 
-            // Fila de botones Hisui y Johto
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -396,7 +372,6 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/Hisui")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Hisui", style = buttonTextStyle)
                 }
@@ -406,13 +381,11 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/original-johto")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Johto", style = buttonTextStyle)
                 }
             }
 
-            // Fila de botones Sinnoh y Unova
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -425,7 +398,6 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/original-sinnoh")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Sinnoh", style = buttonTextStyle)
                 }
@@ -435,13 +407,11 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/original-unova")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Unova", style = buttonTextStyle)
                 }
             }
 
-            // Fila de botones Kalos y Alola
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -454,7 +424,6 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/kalos-central")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Kalos", style = buttonTextStyle)
                 }
@@ -464,7 +433,6 @@ fun PokedexScreen(navController: NavController) {
                     onClick = {
                         navController.navigate("region/original-alola")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = redColor)
                 ) {
                     Text("Alola", style = buttonTextStyle)
                 }
@@ -472,8 +440,6 @@ fun PokedexScreen(navController: NavController) {
         }
     }
 }
-
-
 
 @Composable
 fun TopBar(navController: NavController) {
@@ -489,40 +455,68 @@ fun TopBar(navController: NavController) {
                 contentDescription = "Home",
             )
         }
+        IconButton(
+            onClick = {
+                navController.navigate("favorites")
+            },
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_favorite),
+                contentDescription = "Favoritos",
+                modifier = Modifier.padding(4.dp)
+            )
+        }
         Spacer(modifier = Modifier.weight(1f))
         Text(
             text = "Pokedex",
-            fontSize = 24.sp,
+            fontSize = 28.sp,
         )
+
     }
 }
 
 @Composable
 fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
     var pokemonDetails by remember { mutableStateOf<PokemonDetail?>(null) }
-    var isFavorite by remember { mutableStateOf(false) }  // Estado para verificar si es favorito
+    var isFavorite by remember { mutableStateOf(false) }
+    var pokemonImageUrl by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val pokemonDao = DatabaseClient.getInstance(LocalContext.current).pokemonDao()
 
     LaunchedEffect(pokemonName) {
         coroutineScope.launch {
             try {
+
                 val response = PokemonDriverAdapter.api.getPokemonDetails(pokemonName)
-                if (response.isSuccessful) {
-                    pokemonDetails = response.body()
-                }
+                    if (response.isSuccessful) {
+                        pokemonDetails = response.body()
+                        pokemonDetails?.sprites?.front_default?.let {
+                            pokemonImageUrl = it
+                        }
+                    }else{
+                        val existingPokemon: PokemonEntity? = pokemonDao.getPokemonByName(pokemonName)
+                        if(existingPokemon != null){
+                            pokemonDetails = existingPokemon.toPokemonDetail()
+                        }else{
+                            println("Pokémon no encontrado en la DB")
+                        }
+                    }
+
             } catch (e: Exception) {
                 e.printStackTrace()
+                val existingPokemon: PokemonEntity? = pokemonDao.getPokemonByName(pokemonName)
+                if(existingPokemon != null){
+                    pokemonDetails = existingPokemon.toPokemonDetail()
+                }else{
+                    println("Pokémon no encontrado en la DB")
+                }
+
             }
         }
     }
 
     Scaffold(
         topBar = { TopBar(navController) },
-        bottomBar = {
-            // Pasamos el navController a BottomBarLikeButton
-            BottomBarLikeButton(navController = navController)
-        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -530,8 +524,6 @@ fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
                 .padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-
-
             LaunchedEffect(pokemonDetails?.name) {
                 pokemonDetails?.name?.let { name ->
                     val existingPokemon = pokemonDao.getPokemonByName(name)
@@ -539,8 +531,19 @@ fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
                 }
             }
 
-
             pokemonDetails?.let { details ->
+                pokemonImageUrl?.let { imageUrl ->
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Imagen de ${details.name}",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp)
+                            .padding(8.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
                 Text(text = details.name.capitalize(), fontSize = 24.sp)
                 Text("Height: ${details.height} decimeters")
                 Text("Weight: ${details.weight} hectograms")
@@ -552,7 +555,6 @@ fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
                     }"
                 )
 
-                // Botón para agregar a favoritos
                 Button(
                     onClick = {
                         isFavorite = !isFavorite
@@ -569,7 +571,7 @@ fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
                                         .joinToString(", ") { it.move.name }
                                 )
 
-                                pokemonDao.insertPokemon(pokemonEntity);
+                                pokemonDao.insertPokemon(pokemonEntity)
                                 println("${details.name} ${"Agregado a favoritos"}")
                             } else {
                                 pokemonDao.deletePokemonByName(details.name)
@@ -591,49 +593,21 @@ fun PokemonDetailScreen(pokemonName: String, navController: NavController) {
 }
 
 @Composable
-fun BottomBarLikeButton(navController: NavController) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth() // Asegura que el Box ocupe todo el ancho de la pantalla
-            .padding(16.dp) // Padding general alrededor
-    ) {
-        IconButton(
-            onClick = {
-                // Navegar a la pantalla de favoritos
-                navController.navigate("favorites")
-            },
-            modifier = Modifier.align(Alignment.CenterEnd) // Alinea el botón a la derecha
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_favorite),
-                contentDescription = "Favoritos",
-                modifier = Modifier.padding(4.dp) // Ajustar tamaño y espaciado del ícono
-            )
-        }
-    }
-}
-
-@Composable
 fun FavoritesScreen(navController: NavController) {
     val pokemonDao = DatabaseClient.getInstance(LocalContext.current).pokemonDao()
     var pokemonList by remember { mutableStateOf<List<PokemonEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Función para obtener los Pokémon de la DB
     fun loadPokemonList() {
-        // Usamos el lanzador de corutinas para hacer la consulta en un hilo de fondo
         isLoading = true
         CoroutineScope(Dispatchers.IO).launch {
-            // Realizamos la consulta (simula obtener todos los Pokémon)
             val allPokemons =
-                pokemonDao.getAllPokemons() // Esta consulta debe estar implementada en tu DAO
-            // Regresamos al hilo principal para actualizar el estado
+                pokemonDao.getAllPokemons()
             pokemonList = allPokemons
             isLoading = false
         }
     }
 
-    // Cargar los Pokémon favoritos
     LaunchedEffect(Unit) {
         loadPokemonList()
     }
@@ -647,22 +621,26 @@ fun FavoritesScreen(navController: NavController) {
                 .padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Verificando el estado de carga y la lista de favoritos
             if (isLoading) {
                 Text("Cargando...")
             } else if (pokemonList.isEmpty()) {
                 Text("No tienes favoritos.", modifier = Modifier.padding(8.dp))
             } else {
-                // Mostrar los Pokémon obtenidos
                 Column(modifier = Modifier.fillMaxWidth()) {
                     pokemonList.forEach { pokemon ->
-                        Text(text = pokemon.name, modifier = Modifier.padding(8.dp))
+                        Button(
+                            onClick = {
+                                navController.navigate("pokemonDetail/${pokemon.name}")
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(4.dp)
+                        ) {
+                            Text(text = pokemon.name.capitalize())
+                        }
                     }
                 }
             }
         }
     }
 }
-
-
-
